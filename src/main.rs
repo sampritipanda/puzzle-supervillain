@@ -5,6 +5,7 @@ use ark_ec::{
     AffineRepr, CurveGroup,
 };
 use ark_ff::field_hashers::DefaultFieldHasher;
+use ark_ff::fields::Field;
 
 use ark_serialize::{CanonicalDeserialize, Read};
 
@@ -76,12 +77,25 @@ fn main() {
         .for_each(|(i, (pk, proof))| pok_verify(*pk, i, *proof));
 
     let new_key_index = public_keys.len();
-    let message = b"YOUR GITHUB USERNAME";
+    let message = b"sampritipanda";
 
     /* Enter solution here */
 
-    let new_key = G1Affine::zero();
-    let new_proof = G2Affine::zero();
+    let aggregate_rest = public_keys
+        .iter()
+        .fold(G1Projective::zero(), |acc, (pk, _)| acc + pk)
+        .into_affine();
+    let new_key = aggregate_rest.neg();
+
+    // let rng = &mut ark_std::rand::rngs::StdRng::seed_from_u64(20399u64);
+    // G2Affine::rand(rng).mul(Fr::from(i as u64 + 1)).into();
+    let proofs_raw = public_keys
+        .iter()
+        .enumerate()
+        .map(|(i, (_pk, proof))| *proof * Fr::from(i as u64 + 1).inverse().unwrap());
+    let proofs_add = proofs_raw.fold(G2Projective::zero(), |acc, el| acc + el).neg();
+    let new_proof = (proofs_add * Fr::from(new_key_index as u64 + 1)).into();
+
     let aggregate_signature = G2Affine::zero();
 
     /* End of solution */
